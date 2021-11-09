@@ -330,6 +330,7 @@ class DynamoHandler(BaseResponse):
         global_index = self.body.get("GlobalSecondaryIndexUpdates", None)
         throughput = self.body.get("ProvisionedThroughput", None)
         stream_spec = self.body.get("StreamSpecification", None)
+        replica_updates = self.body.get("ReplicaUpdates", None)
         try:
             table = self.dynamodb_backend.update_table(
                 name=name,

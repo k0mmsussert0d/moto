@@ -24,6 +24,7 @@ from moto.dynamodb2.exceptions import (
     TransactionCanceledException,
     EmptyKeyAttributeException,
 )
+from moto.dynamodb2.global_tables import DynamoDBGlobalTablesBackend
 from moto.dynamodb2.models.utilities import bytesize
 from moto.dynamodb2.models.dynamo_type import DynamoType
 from moto.dynamodb2.parsing.executors import UpdateExpressionExecutor
@@ -402,6 +403,7 @@ class Table(CloudFormationModel):
         indexes=None,
         global_indexes=None,
         streams=None,
+        global_table=None,
     ):
         self.name = table_name
         self.attr = attr
@@ -449,6 +451,7 @@ class Table(CloudFormationModel):
                 "PointInTimeRecoveryStatus": "DISABLED"  # One of 'ENABLED'|'DISABLED'
             },
         }
+        self.global_table = global_table
 
     @classmethod
     def has_cfn_attr(cls, attribute):
@@ -1068,16 +1071,18 @@ class Backup(object):
 
 
 class DynamoDBBackend(BaseBackend):
-    def __init__(self, region_name=None):
+    def __init__(self, global_tables_backend, region_name=None):
+        self.global_tables_backend = global_tables_backend
         self.region_name = region_name
         self.tables = OrderedDict()
         self.backups = OrderedDict()
 
     def reset(self):
         region_name = self.region_name
+        global_tables_backend = self.global_tables_backend
 
         self.__dict__ = {}
-        self.__init__(region_name)
+        self.__init__(global_tables_backend, region_name)
 
     @staticmethod
     def default_vpc_endpoint_service(service_region, zones):
@@ -1700,10 +1705,11 @@ class DynamoDBBackend(BaseBackend):
         pass
 
 
+global_tables_backend = DynamoDBGlobalTablesBackend()
 dynamodb_backends = {}
 for region in Session().get_available_regions("dynamodb"):
-    dynamodb_backends[region] = DynamoDBBackend(region)
+    dynamodb_backends[region] = DynamoDBBackend(global_tables_backend, region)
 for region in Session().get_available_regions("dynamodb", partition_name="aws-us-gov"):
-    dynamodb_backends[region] = DynamoDBBackend(region)
+    dynamodb_backends[region] = DynamoDBBackend(global_tables_backend, region)
 for region in Session().get_available_regions("dynamodb", partition_name="aws-cn"):
-    dynamodb_backends[region] = DynamoDBBackend(region)
+    dynamodb_backends[region] = DynamoDBBackend(global_tables_backend, region)
